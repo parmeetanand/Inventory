@@ -1,9 +1,13 @@
 package com.example.anandparmeetsingh.inventory;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.LoaderManager;
 import android.content.ContentValues;
+import android.content.CursorLoader;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.Loader;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -17,6 +21,7 @@ import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -31,20 +36,29 @@ import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-public class EditorActivity extends AppCompatActivity {
+public class EditorActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
     private static final int IMAGE_REQUEST = 0;
     private static final String FILE_PROVIDER_AUTHORITY = "com.example.android.inventoryApp";
+    private static final int EXISTING_INVENTORY_LOADER = 0;
     InventoryDbHelper mDbHelper;
+    InventoryCursorAdapter mCursorLoader;
+    private EditText mNameEditText;
+    private EditText mDetailText;
+    private EditText mStockEditText;
+    private EditText mPriceText;
+    private boolean mInventoryHasChanged = false;
+    private View.OnTouchListener mTouchListener = new View.OnTouchListener() {
+        @Override
+        public boolean onTouch(View view, MotionEvent motionEvent) {
+            mInventoryHasChanged = true;
+            return false;
+        }
+    };
     private ImageView mImageView;
-
     private Bitmap mBitmap;
-
     private boolean galleryPic = false;
-
     private Uri mUri;
-
     private String uriString;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,10 +66,46 @@ public class EditorActivity extends AppCompatActivity {
         setContentView(R.layout.activity_editor);
         Button buttonChoose = (Button) findViewById(R.id.add_button);
         mImageView = (ImageView) findViewById(R.id.add_image);
+        Intent intent = getIntent();
+
+        mUri = intent.getData();
+
+        //check if  intent that contain the Uri or not
+        if (mUri == null) {
+            setTitle(getString(R.string.editor_activity_title_new_pet));
+
+            //invalid option menu, so the "delete" menu option can be hidden
+            invalidateOptionsMenu();
+        } else {
+            setTitle(getString(R.string.editor_activity_title_editor_pet));
+
+            getLoaderManager().initLoader(EXISTING_INVENTORY_LOADER, null, this);
+        }
+
+        mNameEditText = (EditText) findViewById(R.id.edit_name);
+        mDetailText = (EditText) findViewById(R.id.edit_detail);
+        mPriceText = (EditText) findViewById(R.id.edit_price);
+        mStockEditText = (EditText) findViewById(R.id.edit_stock);
+
+        //setup OnTouchListener on all input fields to know which has unsaved change
+        mNameEditText.setOnTouchListener(mTouchListener);
+        mDetailText.setOnTouchListener(mTouchListener);
+        mPriceText.setOnTouchListener(mTouchListener);
+        mStockEditText.setOnTouchListener(mTouchListener);
         buttonChoose.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 image();
+            }
+        });
+
+        Button order = (Button) findViewById(R.id.add_quantity_button);
+        order.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(Intent.ACTION_SEND);
+                intent.setType("*/*");
+                startActivity(Intent.createChooser(intent, "Send Email"));
             }
         });
 
@@ -71,8 +121,11 @@ public class EditorActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.action_save:
-                saveData();
+                save();
+                return true;
+            case R.id.action_delete:
 
+                showDeleteDialog();
                 return true;
             case android.R.id.home:
                 if (!hasChanged()) {
@@ -93,8 +146,8 @@ public class EditorActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    public void saveData() {
-        if (checkValid()) {
+    public void save() {
+        if (checkValidity()) {
             mDbHelper = new InventoryDbHelper(this);
             EditText name = (EditText) findViewById(R.id.edit_name);
             EditText price = (EditText) findViewById(R.id.edit_price);
@@ -164,27 +217,27 @@ public class EditorActivity extends AppCompatActivity {
         showUnsavedChanges(discardButtonClickListener);
     }
 
-    public boolean checkValid() {
-        EditText textName = (EditText) findViewById(R.id.edit_name);
-        EditText textPrice = (EditText) findViewById(R.id.edit_price);
-        EditText textQuantity = (EditText) findViewById(R.id.edit_stock);
-        EditText textDetail = (EditText) findViewById(R.id.edit_detail);
-        return (textName.getText().toString().trim().length() != 0 &&
-                textPrice.getText().toString().trim().length() != 0 &&
-                textQuantity.getText().toString().trim().length() != 0 &&
-                textDetail.getText().toString().trim().length() != 0 &&
+    public boolean checkValidity() {
+        EditText Name = (EditText) findViewById(R.id.edit_name);
+        EditText Price = (EditText) findViewById(R.id.edit_price);
+        EditText Quantity = (EditText) findViewById(R.id.edit_stock);
+        EditText Detail = (EditText) findViewById(R.id.edit_detail);
+        return (Name.getText().toString().trim().length() != 0 &&
+                Price.getText().toString().trim().length() != 0 &&
+                Quantity.getText().toString().trim().length() != 0 &&
+                Detail.getText().toString().trim().length() != 0 &&
                 uriString != null);
     }
 
     private boolean hasChanged() {
-        EditText textName = (EditText) findViewById(R.id.edit_name);
-        EditText textPrice = (EditText) findViewById(R.id.edit_price);
-        EditText textQuantity = (EditText) findViewById(R.id.edit_stock);
-        EditText textDetail = (EditText) findViewById(R.id.edit_detail);
-        return textName.getText().toString().trim().length() != 0 ||
-                textPrice.getText().toString().trim().length() != 0 ||
-                textQuantity.getText().toString().trim().length() != 0 ||
-                textDetail.getText().toString().trim().length() != 0 ||
+        EditText Name = (EditText) findViewById(R.id.edit_name);
+        EditText Price = (EditText) findViewById(R.id.edit_price);
+        EditText Quantity = (EditText) findViewById(R.id.edit_stock);
+        EditText Detail = (EditText) findViewById(R.id.edit_detail);
+        return  Name.getText().toString().trim().length() != 0 ||
+                Price.getText().toString().trim().length() != 0 ||
+                Quantity.getText().toString().trim().length() != 0 ||
+                Detail.getText().toString().trim().length() != 0 ||
                 uriString != null;
     }
 
@@ -204,9 +257,9 @@ public class EditorActivity extends AppCompatActivity {
 
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent resultData) {
+    public void onActivityResult(int requestCode, int resultCodes, Intent resultData) {
 
-        if (resultCode == Activity.RESULT_OK) {
+        if (resultCodes == Activity.RESULT_OK) {
 
             if (resultData != null) {
                 mUri = resultData.getData();
@@ -247,21 +300,21 @@ public class EditorActivity extends AppCompatActivity {
     }
 
     public Uri getShareableImageUri() {
-        Uri imageUri;
+        Uri imagesUri;
 
         if (galleryPic) {
             String filename = PathFinder();
             savingInFile(getCacheDir(), filename, mBitmap, Bitmap.CompressFormat.JPEG, 100);
-            File imageFile = new File(getCacheDir(), filename);
+            File imagesFile = new File(getCacheDir(), filename);
 
-            imageUri = FileProvider.getUriForFile(
-                    this, FILE_PROVIDER_AUTHORITY, imageFile);
+            imagesUri = FileProvider.getUriForFile(
+                    this, FILE_PROVIDER_AUTHORITY, imagesFile);
 
         } else {
-            imageUri = mUri;
+            imagesUri = mUri;
         }
 
-        return imageUri;
+        return imagesUri;
     }
 
     public String PathFinder() {
@@ -271,24 +324,24 @@ public class EditorActivity extends AppCompatActivity {
         if (returnCursor != null) {
             returnCursor.moveToFirst();
         }
-        String fileName = null;
+        String fileNames = null;
         if (returnCursor != null) {
-            fileName = returnCursor.getString(returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+            fileNames = returnCursor.getString(returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
         }
         if (returnCursor != null) {
             returnCursor.close();
         }
-        return fileName;
+        return fileNames;
     }
 
 
     public boolean savingInFile(File dir, String fileName, Bitmap bm,
                                 Bitmap.CompressFormat format, int quality) {
-        File imageFile = new File(dir, fileName);
+        File imagesFile = new File(dir, fileName);
 
         FileOutputStream fos = null;
         try {
-            fos = new FileOutputStream(imageFile);
+            fos = new FileOutputStream(imagesFile);
             bm.compress(format, quality, fos);
             fos.close();
 
@@ -303,5 +356,107 @@ public class EditorActivity extends AppCompatActivity {
             }
         }
         return false;
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        //Define the projection that specifies the column that we need
+        String[] projection = {
+                InventoryContract.InventoryEntry._ID,
+                InventoryContract.InventoryEntry.COLUMN_INVENTORY_NAME,
+                InventoryContract.InventoryEntry.COLUMN_INVENTORY_DETAIL,
+                InventoryContract.InventoryEntry.COLUMN_INVENTORY_PRICE,
+                InventoryContract.InventoryEntry.COLUMN_INVENTORY_QUANTITY
+        };
+
+        return new CursorLoader(this, mUri,
+                projection,
+                null,
+                null,
+                null);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
+        //Update new Cursor that contain the updated data
+        if (cursor == null || cursor.getCount() < 1) {
+            return;
+        }
+
+        //proceed with moving to the first row of the cursor and reading data from it
+        if (cursor.moveToFirst()) {
+            int nameColumnIndex = cursor.getColumnIndex(InventoryContract.InventoryEntry.COLUMN_INVENTORY_NAME);
+            int breedColumnIndex = cursor.getColumnIndex(InventoryContract.InventoryEntry.COLUMN_INVENTORY_DETAIL);
+            int genderColumnIndex = cursor.getColumnIndex(InventoryContract.InventoryEntry.COLUMN_INVENTORY_QUANTITY);
+            int weightColumnIndex = cursor.getColumnIndex(InventoryContract.InventoryEntry.COLUMN_INVENTORY_PRICE);
+
+            //extract the value of the cursor from given index
+            String name = cursor.getString(nameColumnIndex);
+            String breed = cursor.getString(breedColumnIndex);
+            int gender = cursor.getInt(genderColumnIndex);
+            int weight = cursor.getInt(weightColumnIndex);
+
+            //update the views on the screen with the value from the database
+            mNameEditText.setText(name);
+            mDetailText.setText(breed);
+            mPriceText.setText(Integer.toString(weight));
+            mStockEditText.setText(Integer.toString(gender));
+        }
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        //callback called when the data need to be deleted
+        mNameEditText.setText("");
+        mDetailText.setText("");
+        mPriceText.setText("");
+        mStockEditText.setText("");
+        getContentResolver().notifyChange(InventoryContract.InventoryEntry.CONTENT_URI, null);
+    }
+
+
+    private void showDeleteDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage(R.string.delete_dialog_msg);
+        builder.setPositiveButton(R.string.delete, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                //user click the Delete button
+                deleteInventory();
+            }
+        });
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                //User click cancel
+                if (dialogInterface != null) {
+                    dialogInterface.dismiss();
+                }
+            }
+        });
+
+        //create and show the dialog
+        AlertDialog alertDialog = builder.create();
+        alertDialog.show();
+    }
+
+    private void deleteInventory() {
+        if (mUri != null) {
+            //pass in null for the selection and selectionArgs
+            int rowsDeleted = getContentResolver().delete(mUri, null, null);
+
+            //show toast whether the outcast
+            if (rowsDeleted == 0) {
+                //no row mean nothing to delete show error
+                Toast.makeText(this, "Delete failed", Toast.LENGTH_SHORT).show();
+            } else {
+                //otherwise has row to delete show successful
+                Toast.makeText(this, "Delete Successful", Toast.LENGTH_SHORT).show();
+            }
+        }
+        getContentResolver().notifyChange(InventoryContract.InventoryEntry.CONTENT_URI, null);
+
+        //close activity
+        finish();
     }
 }

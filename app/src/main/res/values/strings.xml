@@ -10,6 +10,7 @@
     <string name="editor_activity_title_new_pet">Add a Pet</string>
 
     <string name="action_save">Save</string>
+    <string name="editor_activity_title_editor_pet">Edit pet</string>
     <string name="action_delete">Delete</string>
     <string name="title_new_inventory">Add an Inventory</string>
 

@@ -104,7 +104,7 @@ public class CatalogActivity extends AppCompatActivity implements LoaderManager.
         ContentValues values = new ContentValues();
         values.put(InventoryContract.InventoryEntry.COLUMN_INVENTORY_NAME, "Name");
         values.put(InventoryContract.InventoryEntry.COLUMN_INVENTORY_PRICE, 10);
-        values.put(InventoryContract.InventoryEntry.COLUMN_INVENTORY_QUANTITY,10 );
+        values.put(InventoryContract.InventoryEntry.COLUMN_INVENTORY_QUANTITY, 10);
         values.put(InventoryContract.InventoryEntry.COLUMN_INVENTORY_DETAIL, "Something");
 
         // Insert a new row for Toto into the provider using the ContentResolver.
@@ -124,6 +124,8 @@ public class CatalogActivity extends AppCompatActivity implements LoaderManager.
             Toast.makeText(this, "Entry Deleted",
                     Toast.LENGTH_SHORT).show();
         }
+        getContentResolver().notifyChange(InventoryContract.InventoryEntry.CONTENT_URI, null);
+
     }
 
     @Override
@@ -147,8 +149,13 @@ public class CatalogActivity extends AppCompatActivity implements LoaderManager.
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
         //Define the projection that specifies the column that we need
-        String[] projection = {InventoryContract.InventoryEntry._ID, InventoryContract.InventoryEntry.COLUMN_INVENTORY_NAME,
-                InventoryContract.InventoryEntry.COLUMN_INVENTORY_DETAIL};
+        String[] projection = {
+                InventoryContract.InventoryEntry._ID,
+                InventoryContract.InventoryEntry.COLUMN_INVENTORY_NAME,
+                InventoryContract.InventoryEntry.COLUMN_INVENTORY_DETAIL,
+                InventoryContract.InventoryEntry.COLUMN_INVENTORY_PRICE,
+                InventoryContract.InventoryEntry.COLUMN_INVENTORY_QUANTITY
+        };
 
         return new CursorLoader(this, InventoryContract.InventoryEntry.CONTENT_URI,
                 projection,
@@ -166,6 +173,7 @@ public class CatalogActivity extends AppCompatActivity implements LoaderManager.
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
         //callback called when the data need to be deleted
+        getContentResolver().notifyChange(InventoryContract.InventoryEntry.CONTENT_URI, null);
         mCursorLoader.swapCursor(null);
     }
 }

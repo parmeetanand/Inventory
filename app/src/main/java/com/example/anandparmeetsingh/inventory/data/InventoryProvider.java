@@ -235,7 +235,7 @@ public class InventoryProvider extends ContentProvider {
             case INVENTORY_ID:
                 return InventoryContract.InventoryEntry.CONTENT_ITEM_TYPE;
             default:
-                throw new IllegalStateException("Unknown URI " + uri + " with match " + match);
+                throw new IllegalStateException("Unknown URI " + uri + " with " + match);
         }
     }
 }
