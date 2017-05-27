@@ -78,39 +78,25 @@ public class CatalogActivity extends AppCompatActivity implements LoaderManager.
             }
         });
 
-        //to access to database we instantiate subclass of SQLiteHelper
-        //the context is the current activity
-//        mPetHelper = new PetDbHelper(this);
-//
-//      SQLiteDatabase db = mPetHelper.getReadableDatabase();
     }
 
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu options from the res/menu/menu_catalog.xml file.
-        // This adds menu items to the app bar.
+
         getMenuInflater().inflate(R.menu.menu_catalog, menu);
         return true;
     }
 
     private void insertInventory() {
-//        mPetHelper = new PetDbHelper(this);
-//        //Get data from the repository in write mode
-//        SQLiteDatabase db = mPetHelper.getWritableDatabase();
 
-        //create new map of values
-        //where column are the keys
         ContentValues values = new ContentValues();
         values.put(InventoryContract.InventoryEntry.COLUMN_INVENTORY_NAME, "Name");
         values.put(InventoryContract.InventoryEntry.COLUMN_INVENTORY_PRICE, 10);
         values.put(InventoryContract.InventoryEntry.COLUMN_INVENTORY_QUANTITY, 10);
         values.put(InventoryContract.InventoryEntry.COLUMN_INVENTORY_DETAIL, "Something");
 
-        // Insert a new row for Toto into the provider using the ContentResolver.
-        // Use the {@link PetEntry#CONTENT_URI} to indicate that we want to insert
-        // into the pets database table.
-        // Receive the new content URI that will allow us to access Toto's data in the future.
+
         Uri newUri = getContentResolver().insert(InventoryContract.InventoryEntry.CONTENT_URI, values);
         Log.v("CatalogActivity", "New row ID: " + newUri);
     }
@@ -130,7 +116,6 @@ public class CatalogActivity extends AppCompatActivity implements LoaderManager.
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // User clicked on a menu option in the app bar overflow menu
         switch (item.getItemId()) {
             // Respond to a click on the "Insert dummy data" menu option
             case R.id.action_insert_dummy_data:

@@ -19,6 +19,7 @@ import android.provider.OpenableColumns;
 import android.support.v4.app.NavUtils;
 import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -46,6 +47,10 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
     private EditText mDetailText;
     private EditText mStockEditText;
     private EditText mPriceText;
+    private String mProductEmail;
+    private int mQuantityEmail;
+    private int mQuantity;
+    private float mPriceEmail;
     private boolean mInventoryHasChanged = false;
     private View.OnTouchListener mTouchListener = new View.OnTouchListener() {
         @Override
@@ -54,10 +59,13 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
             return false;
         }
     };
+    private ImageView mProductPic;
     private ImageView mImageView;
     private Bitmap mBitmap;
     private boolean galleryPic = false;
     private Uri mUri;
+    private Uri mCurrent;
+    private String mCurrentPicUri = "no image";
     private String uriString;
 
     @Override
@@ -69,10 +77,13 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         Intent intent = getIntent();
 
         mUri = intent.getData();
-
+        Intent intents = getIntent();
+        mCurrent = intents.getData();
+        Button adding = (Button) findViewById(R.id.add_by);
+        Button subtracting = (Button) findViewById(R.id.subtract_by);
         //check if  intent that contain the Uri or not
         if (mUri == null) {
-            setTitle(getString(R.string.editor_activity_title_new_pet));
+            setTitle(getString(R.string.editor_activity_title_new_Inventory));
 
             //invalid option menu, so the "delete" menu option can be hidden
             invalidateOptionsMenu();
@@ -86,12 +97,14 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         mDetailText = (EditText) findViewById(R.id.edit_detail);
         mPriceText = (EditText) findViewById(R.id.edit_price);
         mStockEditText = (EditText) findViewById(R.id.edit_stock);
+        mProductPic = (ImageView) findViewById(R.id.add_image);
 
         //setup OnTouchListener on all input fields to know which has unsaved change
         mNameEditText.setOnTouchListener(mTouchListener);
         mDetailText.setOnTouchListener(mTouchListener);
         mPriceText.setOnTouchListener(mTouchListener);
         mStockEditText.setOnTouchListener(mTouchListener);
+        mProductPic.setOnTouchListener(mTouchListener);
         buttonChoose.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -105,9 +118,23 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
             public void onClick(View v) {
                 Intent intent = new Intent(Intent.ACTION_SEND);
                 intent.setType("*/*");
+                intent.putExtra(Intent.EXTRA_TEXT, mProductEmail + "\n" + mPriceEmail + "\n" + mQuantityEmail);
                 startActivity(Intent.createChooser(intent, "Send Email"));
             }
         });
+        adding.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                adding();
+            }
+        });
+        subtracting.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                subtracting();
+            }
+        });
+
 
     }
 
@@ -146,6 +173,7 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         return super.onOptionsItemSelected(item);
     }
 
+
     public void save() {
         if (checkValidity()) {
             mDbHelper = new InventoryDbHelper(this);
@@ -155,7 +183,7 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
             EditText quantity = (EditText) findViewById(R.id.edit_stock);
 
             String names = name.getText().toString();
-            int prices = Integer.parseInt(price.getText().toString());
+            float prices = Float.parseFloat(price.getText().toString());
             String details = detail.getText().toString();
             int quant = Integer.parseInt(quantity.getText().toString());
             ContentValues values = new ContentValues();
@@ -163,22 +191,39 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
             values.put(InventoryContract.InventoryEntry.COLUMN_INVENTORY_PRICE, prices);
             values.put(InventoryContract.InventoryEntry.COLUMN_INVENTORY_QUANTITY, quant);
             values.put(InventoryContract.InventoryEntry.COLUMN_INVENTORY_DETAIL, details);
-            values.put(InventoryContract.InventoryEntry.COLUMN_IMAGE, uriString);
+            values.put(InventoryContract.InventoryEntry.COLUMN_IMAGE, mCurrentPicUri);
 
-            Uri newUri = getContentResolver().insert(InventoryContract.InventoryEntry.CONTENT_URI, values);
+            Log.e("Uri", mCurrent + "this");
+            if (mCurrent == null) {
+                //insert new pet into pet provider, return the Uri for the content uri for the new pet
+                Uri newRowId = getContentResolver().insert(InventoryContract.InventoryEntry.CONTENT_URI, values);
 
-            if (newUri == null) {
-                Toast.makeText(this, getString(R.string.detail_insert_inventory_failed),
-                        Toast.LENGTH_SHORT).show();
+                //show toast depending whether insert or not
+                if (newRowId == null) {
+                    Toast.makeText(this, "Insert failed", Toast.LENGTH_SHORT).show();
+                } else {
+                    if (validity()) {
+                        Toast.makeText(this, "Insert successful", Toast.LENGTH_LONG).show();
+                        Intent intent = new Intent(this, CatalogActivity.class);
+                        startActivity(intent);
+                    } else {
+                        Toast.makeText(this, "Fields can\'t be blank", Toast.LENGTH_LONG).show();
+                    }
+                }
             } else {
-                Toast.makeText(this, getString(R.string.detail_insert_inventory_successful),
-                        Toast.LENGTH_SHORT).show();
-            }
-            finish();
-        } else {
-            Toast.makeText(this, getString(R.string.editor_fields_blank),
-                    Toast.LENGTH_SHORT).show();
+                Log.d("Uri", mCurrent + "this");
 
+                int rowAffected = getContentResolver().update(mCurrent, values, null, null);
+
+                //show toast whether success or not
+                if (rowAffected == 0) {
+                    Toast.makeText(this, "Update failed", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Update successful", Toast.LENGTH_SHORT).show();
+                    Intent intent = new Intent(this, CatalogActivity.class);
+                    startActivity(intent);
+                }
+            }
         }
     }
 
@@ -217,7 +262,7 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         showUnsavedChanges(discardButtonClickListener);
     }
 
-    public boolean checkValidity() {
+    public boolean validity() {
         EditText Name = (EditText) findViewById(R.id.edit_name);
         EditText Price = (EditText) findViewById(R.id.edit_price);
         EditText Quantity = (EditText) findViewById(R.id.edit_stock);
@@ -229,12 +274,24 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
                 uriString != null);
     }
 
+    public boolean checkValidity() {
+        EditText Name = (EditText) findViewById(R.id.edit_name);
+        EditText Price = (EditText) findViewById(R.id.edit_price);
+        EditText Quantity = (EditText) findViewById(R.id.edit_stock);
+        EditText Detail = (EditText) findViewById(R.id.edit_detail);
+        return (Name.getText().toString().trim().length() != 0 &&
+                Price.getText().toString().trim().length() != 0 &&
+                Quantity.getText().toString().trim().length() != 0 &&
+                Detail.getText().toString().trim().length() != 0 ||
+                uriString != null);
+    }
+
     private boolean hasChanged() {
         EditText Name = (EditText) findViewById(R.id.edit_name);
         EditText Price = (EditText) findViewById(R.id.edit_price);
         EditText Quantity = (EditText) findViewById(R.id.edit_stock);
         EditText Detail = (EditText) findViewById(R.id.edit_detail);
-        return  Name.getText().toString().trim().length() != 0 ||
+        return Name.getText().toString().trim().length() != 0 ||
                 Price.getText().toString().trim().length() != 0 ||
                 Quantity.getText().toString().trim().length() != 0 ||
                 Detail.getText().toString().trim().length() != 0 ||
@@ -263,7 +320,7 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
 
             if (resultData != null) {
                 mUri = resultData.getData();
-
+                mCurrentPicUri = resultData.getData().toString();
                 mBitmap = getBitmapFromUri(mUri);
                 mImageView.setImageBitmap(mBitmap);
                 uriString = getShareableImageUri().toString();
@@ -366,7 +423,8 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
                 InventoryContract.InventoryEntry.COLUMN_INVENTORY_NAME,
                 InventoryContract.InventoryEntry.COLUMN_INVENTORY_DETAIL,
                 InventoryContract.InventoryEntry.COLUMN_INVENTORY_PRICE,
-                InventoryContract.InventoryEntry.COLUMN_INVENTORY_QUANTITY
+                InventoryContract.InventoryEntry.COLUMN_INVENTORY_QUANTITY,
+                InventoryContract.InventoryEntry.COLUMN_IMAGE
         };
 
         return new CursorLoader(this, mUri,
@@ -378,29 +436,36 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
 
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
-        //Update new Cursor that contain the updated data
         if (cursor == null || cursor.getCount() < 1) {
             return;
         }
 
-        //proceed with moving to the first row of the cursor and reading data from it
         if (cursor.moveToFirst()) {
             int nameColumnIndex = cursor.getColumnIndex(InventoryContract.InventoryEntry.COLUMN_INVENTORY_NAME);
-            int breedColumnIndex = cursor.getColumnIndex(InventoryContract.InventoryEntry.COLUMN_INVENTORY_DETAIL);
-            int genderColumnIndex = cursor.getColumnIndex(InventoryContract.InventoryEntry.COLUMN_INVENTORY_QUANTITY);
-            int weightColumnIndex = cursor.getColumnIndex(InventoryContract.InventoryEntry.COLUMN_INVENTORY_PRICE);
-
+            int detailColumnIndex = cursor.getColumnIndex(InventoryContract.InventoryEntry.COLUMN_INVENTORY_DETAIL);
+            mQuantity = cursor.getColumnIndex(InventoryContract.InventoryEntry.COLUMN_INVENTORY_QUANTITY);
+            int priceColumnIndex = cursor.getColumnIndex(InventoryContract.InventoryEntry.COLUMN_INVENTORY_PRICE);
+            int picture = cursor.getColumnIndex(InventoryContract.InventoryEntry.COLUMN_IMAGE);
             //extract the value of the cursor from given index
             String name = cursor.getString(nameColumnIndex);
-            String breed = cursor.getString(breedColumnIndex);
-            int gender = cursor.getInt(genderColumnIndex);
-            int weight = cursor.getInt(weightColumnIndex);
-
+            String detail = cursor.getString(detailColumnIndex);
+            int quantity = cursor.getInt(mQuantity);
+            float price = cursor.getFloat(priceColumnIndex);
+            String img = cursor.getString(picture);
+            mProductEmail = name;
+            mQuantityEmail = quantity;
+            mPriceEmail = price;
+            if (img != null) {
+                Uri imgUri = Uri.parse(img);
+                mProductPic.setImageURI(imgUri);
+            }
             //update the views on the screen with the value from the database
             mNameEditText.setText(name);
-            mDetailText.setText(breed);
-            mPriceText.setText(Integer.toString(weight));
-            mStockEditText.setText(Integer.toString(gender));
+            mDetailText.setText(detail);
+            mPriceText.setText(Float.toString(price));
+            mStockEditText.setText(Integer.toString(quantity));
+
+
         }
     }
 
@@ -459,4 +524,29 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         //close activity
         finish();
     }
+
+    private void subtracting() {
+        String previousValueString = mStockEditText.getText().toString();
+        int previousValue;
+        if (previousValueString.isEmpty()) {
+            return;
+        } else if (previousValueString.equals("0")) {
+            return;
+        } else {
+            previousValue = Integer.parseInt(previousValueString);
+            mStockEditText.setText(String.valueOf(previousValue - 1));
+        }
+    }
+
+    private void adding() {
+        String previousValueString = mStockEditText.getText().toString();
+        int previousValue;
+        if (previousValueString.isEmpty()) {
+            previousValue = 0;
+        } else {
+            previousValue = Integer.parseInt(previousValueString);
+            mStockEditText.setText(String.valueOf(previousValue + 1));
+        }
+    }
+
 }

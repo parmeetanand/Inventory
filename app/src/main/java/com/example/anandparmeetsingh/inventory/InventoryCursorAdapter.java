@@ -11,7 +11,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CursorAdapter;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -79,6 +78,38 @@ public class InventoryCursorAdapter extends CursorAdapter {
                             Toast.LENGTH_SHORT).show();
                 } else if (q > 0) {
                     q = q - 1;
+
+                    String quantityString = Integer.toString(q);
+
+                    ContentValues values = new ContentValues();
+                    values.put(InventoryContract.InventoryEntry.COLUMN_INVENTORY_QUANTITY, quantityString);
+
+                    Uri currentInventoryUri = ContentUris.withAppendedId(InventoryContract.InventoryEntry.CONTENT_URI, rowId);
+
+                    int rowsAffected = context.getContentResolver().update(currentInventoryUri, values,
+                            null, null);
+
+                    if (rowsAffected != 0) {
+                        quantities.setText(quantityString);
+
+                    } else {
+                        Toast.makeText(context, "Failed to update", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        });
+        Button addButton = (Button) view.findViewById(R.id.add_product);
+        addButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                int q = Integer.parseInt(quantities.getText().toString());
+
+                if (q == 0) {
+                    Toast.makeText(context, "No Stock",
+                            Toast.LENGTH_SHORT).show();
+                } else if (q > 0) {
+                    q = q + 1;
 
                     String quantityString = Integer.toString(q);
 

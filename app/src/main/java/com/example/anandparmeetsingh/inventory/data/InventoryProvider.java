@@ -55,9 +55,7 @@ public class InventoryProvider extends ContentProvider {
         int match = sUriMatcher.match(uri);
         switch (match) {
             case INVENTORY:
-                // For the PETS code, query the pets table directly with the given
-                // projection, selection, selection arguments, and sort order. The cursor
-                // could contain multiple rows of the pets table.
+
                 cursor = database.query(InventoryContract.InventoryEntry.TABLE_NAME, projection, selection, selectionArgs,
                         null, null, sortOrder);
                 break;
@@ -66,8 +64,6 @@ public class InventoryProvider extends ContentProvider {
                 selection = InventoryContract.InventoryEntry._ID + "=?";
                 selectionArgs = new String[]{String.valueOf(ContentUris.parseId(uri))};
 
-                // This will perform a query on the pets table where the _id equals 3 to return a
-                // Cursor containing that row of the table.
                 cursor = database.query(InventoryContract.InventoryEntry.TABLE_NAME, projection, selection, selectionArgs,
                         null, null, sortOrder);
                 break;
@@ -95,19 +91,16 @@ public class InventoryProvider extends ContentProvider {
      * for that specific row in the database.
      */
     private Uri insertInventory(Uri uri, ContentValues values) {
-        // Check that the name is not null
         String name = values.getAsString(InventoryContract.InventoryEntry.COLUMN_INVENTORY_NAME);
         if (name == null) {
             throw new IllegalArgumentException("Inventory requires a name");
         }
 
-        // Check that the gender is valid
         Integer price = values.getAsInteger(InventoryContract.InventoryEntry.COLUMN_INVENTORY_PRICE);
         if (price == null || price < 0) {
             throw new IllegalArgumentException("Inventory requires valid price");
         }
 
-        // If the weight is provided, check that it's greater than or equal to 0 kg
         Integer quantity = values.getAsInteger(InventoryContract.InventoryEntry.COLUMN_INVENTORY_QUANTITY);
         if (quantity != null && quantity < 0) {
             throw new IllegalArgumentException("Inventory requires valid quantity");
@@ -115,99 +108,43 @@ public class InventoryProvider extends ContentProvider {
 
         SQLiteDatabase database = mDbHelper.getWritableDatabase();
 
-        // Insert the new pet with the given values
         long id = database.insert(InventoryContract.InventoryEntry.TABLE_NAME, null, values);
-        // If the ID is -1, then the insertion failed. Log an error and return null.
         if (id == -1) {
             Log.e(LOG_TAG, "Failed to insert row for " + uri);
             return null;
         }
         getContext().getContentResolver().notifyChange(uri, null);
-        // Return the new URI with the ID (of the newly inserted row) appended at the end
         return ContentUris.withAppendedId(uri, id);
     }
 
     @Override
     public int update(Uri uri, ContentValues contentValues, String selection,
                       String[] selectionArgs) {
+        SQLiteDatabase database = mDbHelper.getWritableDatabase();
         final int match = sUriMatcher.match(uri);
+        int rowsUpdated;
         switch (match) {
             case INVENTORY:
-                return updateInventory(uri, contentValues, selection, selectionArgs);
+                return rowsUpdated = database.update(InventoryContract.InventoryEntry.TABLE_NAME,
+                        contentValues,
+                        selection,
+                        selectionArgs);
             case INVENTORY_ID:
-                // For the PET_ID code, extract out the ID from the URI,
-                // so we know which row to update. Selection will be "_id=?" and selection
-                // arguments will be a String array containing the actual ID.
-                selection = InventoryContract.InventoryEntry._ID + "=?";
-                selectionArgs = new String[]{String.valueOf(ContentUris.parseId(uri))};
-                return updateInventory(uri, contentValues, selection, selectionArgs);
+
+                rowsUpdated = database.update(InventoryContract.InventoryEntry.TABLE_NAME,
+                contentValues,
+                InventoryContract.InventoryEntry._ID + "=?",
+                new String[]{String.valueOf(ContentUris.parseId(uri))});
+                break;
             default:
                 throw new IllegalArgumentException("Update is not supported for " + uri);
         }
-    }
-
-    /**
-     * Update pets in the database with the given content values. Apply the changes to the rows
-     * specified in the selection and selection arguments (which could be 0 or 1 or more pets).
-     * Return the number of rows that were successfully updated.
-     */
-    private int updateInventory(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
-        // If the {@link PetEntry#COLUMN_PET_NAME} key is present,
-        // check that the name value is not null.
-        if (values.containsKey(InventoryContract.InventoryEntry.COLUMN_INVENTORY_NAME)) {
-            String name = values.getAsString(InventoryContract.InventoryEntry.COLUMN_INVENTORY_NAME);
-            if (name == null) {
-                throw new IllegalArgumentException("Inventory requires a name");
-            }
-        }
-
-        // If the {@link PetEntry#COLUMN_PET_GENDER} key is present,
-        // check that the gender value is valid.
-//        if (values.containsKey(InventoryContract.InventoryEntry.COLUMN_PET_GENDER)) {
-//            Integer gender = values.getAsInteger(PetEntry.COLUMN_PET_GENDER);
-//            if (gender == null || !PetEntry.isValidGender(gender)) {
-//                throw new IllegalArgumentException("Pet requires valid gender");
-//            }
-//        }
-
-        // If the {@link PetEntry#COLUMN_PET_WEIGHT} key is present,
-        // check that the weight value is valid.
-        if (values.containsKey(InventoryContract.InventoryEntry.COLUMN_INVENTORY_PRICE)) {
-            // Check that the weight is greater than or equal to 0 kg
-            Integer weight = values.getAsInteger(InventoryContract.InventoryEntry.COLUMN_INVENTORY_PRICE);
-            if (weight != null && weight < 0) {
-                throw new IllegalArgumentException("Inventory requires valid price");
-            }
-        }
-
-        Integer quantity = values.getAsInteger(InventoryContract.InventoryEntry.COLUMN_INVENTORY_QUANTITY);
-        if (quantity != null && quantity < 0) {
-            throw new IllegalArgumentException("Inventory requires valid quantity");
-        }
-
-
-        // No need to check the breed, any value is valid (including null).
-
-        // If there are no values to update, then don't try to update the database
-        if (values.size() == 0) {
-            return 0;
-        }
-
-        // Otherwise, get writeable database to update the data
-        SQLiteDatabase database = mDbHelper.getWritableDatabase();
-// Perform the update on the database and get the number of rows affected
-        int rowsUpdated = database.update(InventoryContract.InventoryEntry.TABLE_NAME, values, selection, selectionArgs);
-        if (rowsUpdated != 0) {
-            getContext().getContentResolver().notifyChange(uri, null);
-        }
-        // Returns the number of database rows affected by the update statement
         return rowsUpdated;
-
     }
 
     @Override
     public int delete(Uri uri, String selection, String[] selectionArgs) {
-        // Get writeable database
+        // Get write able database
         SQLiteDatabase database = mDbHelper.getWritableDatabase();
 
         final int match = sUriMatcher.match(uri);

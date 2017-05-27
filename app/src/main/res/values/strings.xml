@@ -1,36 +1,24 @@
 <resources>
     <string name="app_name">Inventory</string>
     <string name="empty_view_title_text">List is empty. Nothing in stock.</string>
-
     <string name="empty_view_subtitle_text">Click on the FAB button to get started</string>
     <string name="action_insert_dummy_data">Insert Dummy Data</string>
-
-    <string name="action_delete_all_entries">Delete All Pets</string>
-
-    <string name="editor_activity_title_new_pet">Add a Pet</string>
-
+    <string name="action_delete_all_entries">Delete All Inventories</string>
+    <string name="editor_activity_title_new_Inventory">Add Inventory</string>
     <string name="action_save">Save</string>
-    <string name="editor_activity_title_editor_pet">Edit pet</string>
+    <string name="editor_activity_title_editor_pet">Edit Inventory</string>
     <string name="action_delete">Delete</string>
     <string name="title_new_inventory">Add an Inventory</string>
-
     <string name="title_edit_inventory">Edit Inventory</string>
-
     <string name="detail_insert_inventory_successful">Inventory saved</string>
-
     <string name="detail_insert_inventory_failed">Error with saving inventory</string>
-
     <string name="detail_update_inventory_successful">Inventory updated</string>
-
     <string name="detail_update_inventory_failed">Error with updating inventory</string>
-
     <string name="unsaved_changes_dialog_msg">Discard changes and quit editing?</string>
     <string name="discard">Discard</string>
     <string name="editor_fields_blank">Fields can\'t be blank</string>
     <string name="keep_editing">Keep Editing</string>
     <string name="unknown">Unknown</string>
-
     <string name="delete_dialog_msg">Delete this inventory?</string>
-
     <string name="delete">Delete</string>
 </resources>
